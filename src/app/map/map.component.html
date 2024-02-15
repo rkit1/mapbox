@@ -1,0 +1,9 @@
+<mgl-map
+  [style]="'mapbox://styles/mapbox/streets-v9'"
+  [zoom]="[18]"
+  [center]="[37.594256367692196, 55.745730601037565]"
+  [pitch]="[60]"
+  (mapCreate)="map = $event"
+  (mapLoad)="onload($event)"
+>
+</mgl-map>
