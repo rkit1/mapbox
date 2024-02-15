@@ -1,16 +1,32 @@
-import { Component, NgZone } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, NgZone } from '@angular/core';
 import * as MapboxDraw from '@mapbox/mapbox-gl-draw';
 import { styles } from './mapbox-draw-styles';
-import { Map, MapboxEvent } from 'mapbox-gl';
+import { GeoJSONSource, Map, MapboxEvent } from 'mapbox-gl';
+import { Feature } from 'geojson';
 
 @Component({
   selector: 'app-map',
   templateUrl: './map.component.html',
-  styleUrls: ['./map.component.scss']
+  styleUrls: ['./map.component.scss'],
 })
 export class MapComponent {
   map!: Map;
+  draw!: MapboxDraw;
+  selected_poly?: Feature;
 
+  get extrusion(): number | null {
+    if (this.selected_poly?.properties) {
+      const ext = this.selected_poly?.properties['extrusion'];
+      return ext ? ext : 0;
+    }
+    return null;
+  }
+  set extrusion(value: number) {
+    if (this.selected_poly?.properties) {
+      this.draw.setFeatureProperty(this.selected_poly!.id as string, 'extrusion', value);
+      this.draw.set(this.draw.getAll());
+    }
+  }
 
   constructor(private _zone: NgZone) {
 
@@ -19,41 +35,37 @@ export class MapComponent {
   onload(event: MapboxEvent) {
     this._zone.run(() => {
       this.map = event.target
-      console.log(event);
-      const draw = new MapboxDraw({
+      this.draw = new MapboxDraw({
         displayControlsDefault: false,
         controls: {
           polygon: true,
           trash: true,
         },
-        styles: [ {
+        styles: [{
           'id': 'extrusion',
           'type': 'fill-extrusion',
           'filter': ['all', ['==', '$type', 'Polygon']],
           'paint': {
-            'fill-extrusion-height': ['coalesce', ['get', 'user_height'], 10],
+            'fill-extrusion-height': ['coalesce', ['get', 'user_extrusion'], 0],
             'fill-extrusion-base': 0,
             'fill-extrusion-color': 'red',
-            'fill-extrusion-opacity': 0.2 
+            'fill-extrusion-opacity': 0.2
           }
         },
         ...styles],
         userProperties: true,
-        // defaultMode: 'draw_polygon'
       });
-      this.map.addControl(draw);
+      this.map.addControl(this.draw);
 
-      // this.map.on('draw.selectionchange', (evt: MapboxDraw.DrawSelectionChangeEvent) => {
-      //   if (evt.features[0] && evt.features[0].geometry.type == "Polygon") {
-      //     (evt.features[0].geometry as any).asd = 321;
-      //     draw.setFeatureProperty(evt.features[0].id as string, 'height', 10000);
-      //   }
-      //   const src = this.map.getSource(MapboxDraw.constants.sources.HOT);
-      //   if (src.type == 'geojson') {
-      //     console.log((src as any)._data);
-      //   }
-      //   //console.log(evt.features);
-      // });
+      this.map.on('draw.selectionchange', (evt: MapboxDraw.DrawSelectionChangeEvent) => {
+        this._zone.run(() => {
+          if (evt.features[0] && evt.features[0].geometry.type == "Polygon") {
+            this.selected_poly = evt.features[0];
+          } else {
+            delete this.selected_poly;
+          }
+        });
+      });
     });
   }
 }

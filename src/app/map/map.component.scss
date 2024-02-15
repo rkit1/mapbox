@@ -1,4 +1,14 @@
 mgl-map {
   height: 100%;
   width: 100%;
+  position: fixed;
+}
+
+
+.sidebar {
+  position: fixed;
+  height: 100%;
+  width: 300px;
+  background-color: white;
+  padding: 20px;
 }
